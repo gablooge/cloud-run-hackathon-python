@@ -60,11 +60,17 @@ def move():
     if not my_target_spaces:
         # TODO: check can move after turn L/R?
         logger.info(
-            "Can't Move/Throw! Just turn left or right! my location: {}, my direction: {}".format(
+            "Can't Move Forward/Throw! Just turn left or right! my location: {}, my direction: {}".format(
                 my_location, my_direction
             )
         )
         return LR_MOVES[random.randrange(len(LR_MOVES))]
+
+    if states[my_name]["wasHit"]:
+        # run away!
+        logger.info("Lari Maju!")
+        return "F"
+
     logger.info(
         "my location: {}, my direction: {}, my target spaces: {}".format(
             my_location, my_direction, my_target_spaces
