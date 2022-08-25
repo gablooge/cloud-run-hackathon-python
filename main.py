@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 moves = ["F", "T", "L", "R"]
 LR_MOVES = ["L", "R"]
+LRF_MOVES = ["L", "R", "F"]
 dimension = [0, 0]  # width, height
 steps = {"N": 0, "E": 1, "W": -1, "S": 0}
 # turns = {
@@ -68,8 +69,8 @@ def move():
 
     if states[my_name]["wasHit"]:
         # run away!
-        logger.info("Lari Maju!")
-        return "F"
+        logger.info("Lari!")
+        return LRF_MOVES[random.randrange(len(LRF_MOVES))]
 
     logger.info(
         "my location: {}, my direction: {}, my target spaces: {}".format(
