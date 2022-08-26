@@ -32,6 +32,7 @@ steps = {"N": 0, "E": 1, "W": -1, "S": 0}
 #     "E": {"L": "N", "R": "S"},
 #     "W": {"L": "S", "R": "N"},
 # }
+player_locations = {}
 
 
 @app.route("/", methods=["GET"])
@@ -47,17 +48,31 @@ def move():
 
     global dimension
     global steps
+    global player_locations
+    player_locations = {}
 
     dimension = data["arena"]["dims"]
     steps.update({"N": dimension[0] * -1, "E": 1, "W": -1, "S": dimension[0]})
+    my_name = data["_links"]["self"]["href"]
 
     states = data["arena"]["state"]
-
-    my_name = data["_links"]["self"]["href"]
+    for key in states:
+        if key == my_name:
+            continue
+        location = get_location(states[key]["x"], states[key]["y"])
+        player_locations.update({location: states[key]["direction"]})
     my_location = get_location(states[my_name]["x"], states[my_name]["y"])
     my_direction = states[my_name]["direction"]
-    my_target_spaces = get_target_spaces(my_location, my_direction)
 
+    if states[my_name]["wasHit"]:
+        # run away!
+        logger.info("Lari!")
+        # right now just find empty space
+        if can_move_forward(my_location, my_direction):
+            return "F"
+        return LR_MOVES[random.randrange(len(LR_MOVES))]
+
+    my_target_spaces = get_target_spaces(my_location, my_direction)
     if not my_target_spaces:
         # TODO: check can move after turn L/R?
         logger.info(
@@ -66,11 +81,6 @@ def move():
             )
         )
         return LR_MOVES[random.randrange(len(LR_MOVES))]
-
-    if states[my_name]["wasHit"]:
-        # run away!
-        logger.info("Lari!")
-        return LRF_MOVES[random.randrange(len(LRF_MOVES))]
 
     logger.info(
         "my location: {}, my direction: {}, my target spaces: {}".format(
@@ -103,6 +113,7 @@ def move():
 
 
 def can_move_forward(location, direction):
+    # check by dimension
     if direction == "N" and location <= dimension[0]:
         return False
     if direction == "S" and location + dimension[0] > dimension[0] * dimension[1]:
@@ -111,7 +122,14 @@ def can_move_forward(location, direction):
         return False
     if direction == "E" and location % dimension[0] == 0:
         return False
-    return True
+
+    # check by other player locations
+    one_step_forward = location + steps[direction]
+    if player_locations.get(one_step_forward, None):
+        return False
+    else:
+        # no player
+        return True
 
 
 def get_target_spaces(location, direction):
