@@ -26,12 +26,12 @@ LR_MOVES = ["L", "R"]
 LRF_MOVES = ["L", "R", "F"]
 dimension = [0, 0]  # width, height
 steps = {"N": 0, "E": 1, "W": -1, "S": 0}
-# turns = {
-#     "N": {"L": "W", "R": "E"},
-#     "S": {"L": "E", "R": "W"},
-#     "E": {"L": "N", "R": "S"},
-#     "W": {"L": "S", "R": "N"},
-# }
+turns = {
+    "N": {"L": "W", "R": "E"},
+    "S": {"L": "E", "R": "W"},
+    "E": {"L": "N", "R": "S"},
+    "W": {"L": "S", "R": "N"},
+}
 player_locations = {}
 
 
@@ -68,9 +68,13 @@ def move():
         # run away!
         logger.info("Lari!")
         # right now just find empty space
-        if can_move_forward(my_location, my_direction):
+        if can_move_forward(my_location, my_direction, check_player=True):
             return "F"
-        return LR_MOVES[random.randrange(len(LR_MOVES))]
+        # check turn left and forward
+        if can_move_forward(my_location, turns[my_direction]["L"], check_player=True):
+            return "L"
+        return "R"
+        # return LR_MOVES[random.randrange(len(LR_MOVES))]
 
     my_target_spaces = get_target_spaces(my_location, my_direction)
     if not my_target_spaces:
@@ -112,7 +116,7 @@ def move():
     return LR_MOVES[random.randrange(len(LR_MOVES))]
 
 
-def can_move_forward(location, direction):
+def can_move_forward(location, direction, check_player=False):
     # check by dimension
     if direction == "N" and location <= dimension[0]:
         return False
@@ -124,12 +128,11 @@ def can_move_forward(location, direction):
         return False
 
     # check by other player locations
-    one_step_forward = location + steps[direction]
-    if player_locations.get(one_step_forward, None):
-        return False
-    else:
-        # no player
-        return True
+    if check_player:
+        one_step_forward = location + steps[direction]
+        if player_locations.get(one_step_forward, None):
+            return False
+    return True
 
 
 def get_target_spaces(location, direction):
