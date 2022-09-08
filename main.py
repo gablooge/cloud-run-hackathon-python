@@ -70,6 +70,7 @@ def move():
     right_spaces = get_forward_spaces(
         states[my_name]["x"], states[my_name]["y"], turns[my_direction]["R"]
     )
+    target_in_right_spaces = []
 
     for key in states:
         if key == my_name:
@@ -83,6 +84,8 @@ def move():
                 target_in_forward_spaces.append(location)
             elif location in left_spaces:
                 target_in_left_spaces.append(location)
+            elif location in right_spaces:
+                target_in_right_spaces.append(location)
         player_locations.update({location: states[key]["direction"]})
 
     my_location = get_location(states[my_name]["x"], states[my_name]["y"])
@@ -139,14 +142,17 @@ def move():
     if target_in_left_spaces:
         logger.info("====> Kejar Target, Belok Kiri!")
         return "L"
-    if right_spaces:
-        logger.info("====> Asal Belok Kanan!")
+    if target_in_right_spaces:
+        logger.info("====> Kejar Target, Belok Kanan!")
         return "R"
+    if forward_spaces:
+        logger.info("====> Asal Maju!")
+        return "F"
     if left_spaces:
         logger.info("====> Asal Belok Kiri!")
         return "L"
-    logger.info("====> Asal Maju!")
-    return "F"
+    logger.info("====> Asal Belok Kanan!")
+    return "R"
     # return LR_MOVES[random.randrange(len(LR_MOVES))]
 
 
