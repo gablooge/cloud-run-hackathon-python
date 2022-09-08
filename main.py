@@ -53,67 +53,101 @@ def move():
 
     dimension = data["arena"]["dims"]
     steps.update({"N": dimension[0] * -1, "E": 1, "W": -1, "S": dimension[0]})
+
     my_name = data["_links"]["self"]["href"]
-
     states = data["arena"]["state"]
-    for key in states:
-        if key == my_name:
-            continue
-        location = get_location(states[key]["x"], states[key]["y"])
-        player_locations.update({location: states[key]["direction"]})
-    my_location = get_location(states[my_name]["x"], states[my_name]["y"])
+
     my_direction = states[my_name]["direction"]
+    forward_spaces, forward_target_spaces = get_forward_and_target_spaces(
+        states[my_name]["x"], states[my_name]["y"], my_direction
+    )
+    target_in_forward_spaces = []
 
-    if states[my_name]["wasHit"]:
-        # run away!
-        logger.info("Lari!")
-        # right now just find empty space
-        if can_move_forward(my_location, my_direction, check_player=True):
-            return "F"
-        # check turn left and forward
-        if can_move_forward(my_location, turns[my_direction]["L"], check_player=True):
-            return "L"
-        return "R"
-        # return LR_MOVES[random.randrange(len(LR_MOVES))]
-
-    my_target_spaces = get_target_spaces(my_location, my_direction)
-    if not my_target_spaces:
-        # TODO: check can move after turn L/R?
-        logger.info(
-            "Can't Move Forward/Throw! Just turn left or right! my location: {}, my direction: {}".format(
-                my_location, my_direction
-            )
-        )
-        return LR_MOVES[random.randrange(len(LR_MOVES))]
-
-    logger.info(
-        "my location: {}, my direction: {}, my target spaces: {}".format(
-            my_location, my_direction, my_target_spaces
-        )
+    left_spaces = get_forward_spaces(
+        states[my_name]["x"], states[my_name]["y"], turns[my_direction]["L"]
+    )
+    target_in_left_spaces = []
+    right_spaces = get_forward_spaces(
+        states[my_name]["x"], states[my_name]["y"], turns[my_direction]["R"]
     )
 
     for key in states:
         if key == my_name:
             continue
         location = get_location(states[key]["x"], states[key]["y"])
-        if location in my_target_spaces:
-            logger.info("Serang!")
-            return "T"
-        logger.info(
-            "{}: x:{},y:{} => loc:{}, dir: {}".format(
-                key,
-                states[key]["x"],
-                states[key]["y"],
-                location,
-                states[key]["direction"],
-            )
+        if not states[my_name]["wasHit"]:
+            if location in forward_target_spaces:
+                logger.info("====> Serang!")
+                return "T"
+            if location in forward_spaces:
+                target_in_forward_spaces.append(location)
+            elif location in left_spaces:
+                target_in_left_spaces.append(location)
+        player_locations.update({location: states[key]["direction"]})
+
+    my_location = get_location(states[my_name]["x"], states[my_name]["y"])
+    if states[my_name]["wasHit"]:
+        # run away!
+        # TODO: check attack from
+        # right now just find empty spaceflak
+        if can_move_forward(my_location, my_direction, check_player=True):
+            logger.info("====> Lari ke depan!")
+            return "F"
+        # check turn left and forward
+        if can_move_forward(my_location, turns[my_direction]["L"], check_player=True):
+            logger.info("====> Lari ke kiri!")
+            return "L"
+        logger.info("====> Lari ke kanan!")
+        return "R"
+        # return LR_MOVES[random.randrange(len(LR_MOVES))]
+
+    # my_target_spaces = get_target_spaces(my_location, my_direction)
+    # if not my_target_spaces:
+    #     # TODO: check can move after turn L/R?
+    #     logger.info(
+    #         "Can't Move Forward/Throw! Just turn left or right! my location: {}, my direction: {}".format(
+    #             my_location, my_direction
+    #         )
+    #     )
+    #     return LR_MOVES[random.randrange(len(LR_MOVES))]
+
+    logger.info(
+        "my location: {}, my direction: {}, my forward spaces: {}, my target spaces: {}".format(
+            my_location, my_direction, forward_spaces, forward_target_spaces
         )
-    if can_move_forward(my_target_spaces[-1], my_direction):
-        # TODO: check if there are targets to move forward
-        logger.info("Maju!")
+    )
+
+    # for key in states:
+    #     if key == my_name:
+    #         continue
+    #     location = get_location(states[key]["x"], states[key]["y"])
+    #     if location in my_target_spaces:
+    #         logger.info("Serang!")
+    #         return "T"
+    #     logger.info(
+    #         "{}: x:{},y:{} => loc:{}, dir: {}".format(
+    #             key,
+    #             states[key]["x"],
+    #             states[key]["y"],
+    #             location,
+    #             states[key]["direction"],
+    #         )
+    #     )
+    if target_in_forward_spaces:
+        logger.info("====> Kejar Target, Maju!")
         return "F"
-    # TODO: check can move after turn L/R?
-    return LR_MOVES[random.randrange(len(LR_MOVES))]
+    if target_in_left_spaces:
+        logger.info("====> Kejar Target, Belok Kiri!")
+        return "L"
+    if right_spaces:
+        logger.info("====> Asal Belok Kanan!")
+        return "R"
+    if left_spaces:
+        logger.info("====> Asal Belok Kiri!")
+        return "L"
+    logger.info("====> Asal Maju!")
+    return "F"
+    # return LR_MOVES[random.randrange(len(LR_MOVES))]
 
 
 def can_move_forward(location, direction, check_player=False):
@@ -135,22 +169,61 @@ def can_move_forward(location, direction, check_player=False):
     return True
 
 
-def get_target_spaces(location, direction):
+def get_forward_and_target_spaces(x, y, direction):
+    forward_spaces = []
     target_spaces = []
-    if can_move_forward(location, direction):
-        target_1 = location + steps[direction]
-        target_spaces.append(target_1)
-        if can_move_forward(target_1, direction):
-            target_2 = target_1 + steps[direction]
-            target_spaces.append(target_2)
-            if can_move_forward(target_2, direction):
-                target_3 = target_2 + steps[direction]
-                target_spaces.append(target_3)
-    return target_spaces
+    if direction == "N":
+        forward_spaces = [(dimension[0] * t_y + x + 1) for t_y in range(y)]
+        target_spaces = forward_spaces[-3:]
+    elif direction == "S":
+        forward_spaces = [
+            (dimension[0] * t_y + x + 1) for t_y in range(y + 1, dimension[1])
+        ]
+        target_spaces = forward_spaces[:3]
+    elif direction == "W":
+        forward_spaces = [(dimension[0] * y + t_x + 1) for t_x in range(x)]
+        target_spaces = forward_spaces[-3:]
+    else:
+        forward_spaces = [
+            (dimension[0] * y + t_x + 1) for t_x in range(x + 1, dimension[0])
+        ]
+        target_spaces = forward_spaces[:3]
+    return forward_spaces, target_spaces
+
+
+def get_forward_spaces(x, y, direction):
+    forward_spaces = []
+    if direction == "N":
+        forward_spaces = [(dimension[0] * t_y + x + 1) for t_y in range(y)]
+    elif direction == "S":
+        forward_spaces = [
+            (dimension[0] * t_y + x + 1) for t_y in range(y + 1, dimension[1])
+        ]
+    elif direction == "W":
+        forward_spaces = [(dimension[0] * y + t_x + 1) for t_x in range(x)]
+    else:
+        forward_spaces = [
+            (dimension[0] * y + t_x + 1) for t_x in range(x + 1, dimension[0])
+        ]
+    return forward_spaces
+
+
+# def get_target_spaces(location, direction):
+#     target_spaces = []
+#     if can_move_forward(location, direction):
+#         target_1 = location + steps[direction]
+#         target_spaces.append(target_1)
+#         if can_move_forward(target_1, direction):
+#             target_2 = target_1 + steps[direction]
+#             target_spaces.append(target_2)
+#             if can_move_forward(target_2, direction):
+#                 target_3 = target_2 + steps[direction]
+#                 target_spaces.append(target_3)
+#     return target_spaces
 
 
 def get_location(x, y):
-    return int(dimension[0]) * y + x + 1
+    return dimension[0] * y + x + 1
 
 
 def get_target_locations(me):
