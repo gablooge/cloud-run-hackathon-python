@@ -76,10 +76,10 @@ def move():
         if key == my_name:
             continue
         location = get_location(states[key]["x"], states[key]["y"])
+        if location in forward_target_spaces:
+            logger.info("====> Serang!")
+            return "T"
         if not states[my_name]["wasHit"]:
-            if location in forward_target_spaces:
-                logger.info("====> Serang!")
-                return "T"
             if location in forward_spaces:
                 target_in_forward_spaces.append(location)
             elif location in left_spaces:
